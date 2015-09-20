@@ -12,9 +12,7 @@ const IframeUploader = React.createClass({
   },
 
   componentDidMount() {
-    this.initIframe(() => {
-      this.updateIframeWH();
-    });
+    this.initIframe();
   },
 
   componentDidUpdate() {
@@ -72,7 +70,7 @@ const IframeUploader = React.createClass({
   },
 
   getIframeDocument() {
-    return this.getIframeNode().contentDocument;
+    return this.getIframeNode().contentWindow.document;
   },
 
   getFormNode() {
@@ -126,7 +124,6 @@ const IframeUploader = React.createClass({
 
   createIframeNodeIn(iframeContainer, src) {
     let iframeNode = document.createElement("iframe");
-    iframeNode.id = 'iframe';
     if (src) {
       iframeNode.src = src;
     }
@@ -136,11 +133,14 @@ const IframeUploader = React.createClass({
     iframeNode.style.filter = 'alpha(opacity=0)';
     iframeNode.style.left = 0;
     iframeNode.style.zIndex = 9999;
+    iframeNode.onload = this.onLoad;
     iframeContainer.appendChild(iframeNode);
     return iframeNode;
   },
 
   initIframe(callback) {
+    const iframeContainer = React.findDOMNode(this.refs.iframeContainer);
+    let iframeNode = this.getIframeNode() || this.createIframeNodeIn(iframeContainer);
     let writeIframeContent = () => {
       const win = iframeNode.contentWindow;
       const doc = win.document;
@@ -148,21 +148,17 @@ const IframeUploader = React.createClass({
       doc.write(this.getIframeHTML());
       doc.close();
       this.getFormInputNode().onchange = this.onChange;
-      callback && callback();
+      this.updateIframeWH();
     };
-    const iframeContainer = React.findDOMNode(this.refs.iframeContainer);
-    let iframeNode = this.createIframeNodeIn(iframeContainer);
-    setTimeout(() => {
-      try {
-        iframeNode.contentWindow.document.write('try');
-      } catch (e) {
-        iframeContainer.removeChild(iframeNode);
-        iframeNode = this.createIframeNodeIn(iframeContainer, "javascript:void((function(){var d=document;d.open();d.domain='" + document.domain + "';d.write('');d.close()})())");
-        setTimeout(writeIframeContent, 30);
-        return;
-      }
-      writeIframeContent();
-    }, 0);
+    try {
+      iframeNode.contentWindow.document.write('try');
+    } catch (e) {
+      iframeContainer.removeChild(iframeNode);
+      iframeNode = this.createIframeNodeIn(iframeContainer, "javascript:void((function(){var d=document;d.open();d.domain='" + document.domain + "';d.write('');d.close();})())");
+      setTimeout(writeIframeContent, 30);
+      return;
+    }
+    writeIframeContent();
   },
 
   enableIframe() {
