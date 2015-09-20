@@ -1,13 +1,5 @@
 import React, {PropTypes} from 'react';
 import uid from './uid';
-const iframeStyle = {
-  position: 'absolute',
-  top: 0,
-  opacity: 0,
-  filter: 'alpha(opacity=0)',
-  left: 0,
-  zIndex: 9999,
-};
 
 const IframeUploader = React.createClass({
   propTypes: {
@@ -20,8 +12,9 @@ const IframeUploader = React.createClass({
   },
 
   componentDidMount() {
-    this.updateIframeWH();
-    this.initIframe();
+    this.initIframe(() => {
+      this.updateIframeWH();
+    });
   },
 
   componentDidUpdate() {
@@ -75,7 +68,7 @@ const IframeUploader = React.createClass({
   },
 
   getIframeNode() {
-    return React.findDOMNode(this.refs.iframe);
+    return React.findDOMNode(this.refs.iframeContainer).getElementsByTagName('iframe')[0];
   },
 
   getIframeDocument() {
@@ -125,22 +118,51 @@ const IframeUploader = React.createClass({
   render() {
     return (
       <span style={{position: 'relative', zIndex: 0}}>
-        <iframe ref="iframe"
-                onLoad={this.onLoad}
-                style={iframeStyle}/>
+        <span ref="iframeContainer"></span>
         {this.props.children}
       </span>
     );
   },
 
-  initIframe() {
-    const iframeNode = this.getIframeNode();
-    const win = iframeNode.contentWindow;
-    const doc = win.document;
-    doc.open('text/html', 'replace');
-    doc.write(this.getIframeHTML());
-    doc.close();
-    this.getFormInputNode().onchange = this.onChange;
+  createIframeNodeIn(iframeContainer, src) {
+    let iframeNode = document.createElement("iframe");
+    iframeNode.id = 'iframe';
+    if (src) {
+      iframeNode.src = src;
+    }
+    iframeNode.style.position = 'absolute';
+    iframeNode.style.top = 0;
+    iframeNode.style.opacity = 0;
+    iframeNode.style.filter = 'alpha(opacity=0)';
+    iframeNode.style.left = 0;
+    iframeNode.style.zIndex = 9999;
+    iframeContainer.appendChild(iframeNode);
+    return iframeNode;
+  },
+
+  initIframe(callback) {
+    let writeIframeContent = () => {
+      const win = iframeNode.contentWindow;
+      const doc = win.document;
+      doc.open('text/html', 'replace');
+      doc.write(this.getIframeHTML());
+      doc.close();
+      this.getFormInputNode().onchange = this.onChange;
+      callback && callback();
+    };
+    const iframeContainer = React.findDOMNode(this.refs.iframeContainer);
+    let iframeNode = this.createIframeNodeIn(iframeContainer);
+    setTimeout(() => {
+      try {
+        iframeNode.contentWindow.document.write('try');
+      } catch (e) {
+        iframeContainer.removeChild(iframeNode);
+        iframeNode = this.createIframeNodeIn(iframeContainer, "javascript:void((function(){var d=document;d.open();d.domain='" + document.domain + "';d.write('');d.close()})())");
+        setTimeout(writeIframeContent, 30);
+        return;
+      }
+      writeIframeContent();
+    }, 0);
   },
 
   enableIframe() {

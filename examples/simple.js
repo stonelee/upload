@@ -1,6 +1,16 @@
+try {
+  var aDomain = document.domain.split(".")
+  if (aDomain.length > 1) {
+    var sDomain = aDomain[aDomain.length - 2] + "." + aDomain[aDomain.length - 1]
+    document.domain = sDomain
+  }
+} catch (err) {
+}
+
 var React = require('react');
 var Upload = require('rc-upload');
 var props = {
+  name: 'file',
   action: '/upload.do',
   data: {a: 1, b: 2},
   multiple: true,
